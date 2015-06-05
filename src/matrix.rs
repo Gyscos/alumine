@@ -2,6 +2,8 @@ use num::Zero;
 use std::fmt;
 use std::ops::{Index,Add,Mul,Div,Sub};
 
+use vector::Vector;
+
 #[derive(Clone,PartialEq,Debug)]
 pub struct Matrix<T> {
     /// Number of rows (max Y)
@@ -25,11 +27,49 @@ impl <T> Matrix<T> {
     }
 }
 
+impl <T: Zero> Matrix<T> {
+    pub fn zero(n: usize, m: usize) -> Self {
+        Matrix::new(n,m, |_,_| T::zero())
+    }
+}
+
+impl <T: Clone> Matrix<T> {
+
+    pub fn from_col(v: &Vector<T>) -> Self {
+        Matrix::new(1, v.len(), |_,y| v[y].clone())
+    }
+
+    pub fn from_row(v: &Vector<T>) -> Self {
+        Matrix::new(v.len(), 1, |x,_| v[x].clone())
+    }
+
+    pub fn transpose(&self) -> Matrix<T> {
+        Matrix::new(self.m, self.n, |x,y| self[(y,x)].clone())
+    }
+
+    pub fn to_vector(&self) -> Vector<T> {
+        if self.n == 1 || self.m == 1 {
+            Vector::from_vec(self.data.clone())
+        } else {
+            panic!("Matrix is not single-row or single-column.");
+        }
+    }
+}
+
 impl <'a, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul for &'a Matrix<T> {
     type Output = Matrix<T>;
 
     fn mul(self, other: &'a Matrix<T>) -> Matrix<T> {
+        // TODO: might want to make this faster. Parallel? Skip zero values?
         Matrix::new(other.n, self.m, |x,y| (0..self.n).map(|i| self[(i,y)].clone() * other[(x,i)].clone()).fold(T::zero(), |a,b|a+b))
+    }
+}
+
+impl <'a, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<&'a Vector<T>> for &'a Matrix<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: &'a Vector<T>) -> Vector<T> {
+        Vector::new(self.m, |i| (0..self.n).map(|j| self[(j,i)].clone() * other[j].clone()).fold(T::zero(), |a,b| a+b))
     }
 }
 
@@ -66,8 +106,14 @@ impl <'a, T: Div<Output=T> + Clone> Div<T> for &'a Matrix<T> {
 }
 
 impl <T: Clone + Zero> Matrix<T> {
-    pub fn diagonal(n: usize, value: T) -> Self {
-        Matrix::new(n, n, |x,y| if x == y { value.clone() } else { T::zero() })
+    pub fn diagonal<F>(n: usize, f: F) -> Self
+        where F: Fn(usize) -> T
+    {
+        Matrix::new(n, n, |x,y| if x == y { f(x) } else { T::zero() })
+    }
+
+    pub fn identity(n: usize, value: T) -> Self {
+        Matrix::diagonal(n, |_| value.clone())
     }
 }
 
@@ -97,7 +143,7 @@ impl <T: fmt::Display> fmt::Display for Matrix<T> {
 
 #[test]
 fn test_i3() {
-    let i3 = Matrix::diagonal(3, 1);
+    let i3 = Matrix::identity(3, 1);
     assert_eq!(i3.n, 3);
     assert_eq!(i3.m, 3);
     assert_eq!(i3[(0,0)], 1);
@@ -107,7 +153,53 @@ fn test_i3() {
 
 #[test]
 fn test_add() {
-    let i3 = Matrix::diagonal(3, 1);
+    let i3 = Matrix::identity(3, 1);
     let double = &i3 + &i3;
-    assert_eq!(double, Matrix::diagonal(3,2));
+    assert_eq!(double, Matrix::identity(3,2));
+}
+
+#[test]
+fn test_transpose() {
+    let v = Vector::new(4, |i| 1+i);
+
+    assert_eq!(Matrix::from_row(&v), Matrix::from_col(&v).transpose());
+
+    let m = Matrix::new(4,3, |x,y| x+4*y);
+    let n = Matrix::new(3,4, |x,y| y+4*x);
+
+    assert!(m != n);
+    assert_eq!(m.transpose().transpose(), m);
+    assert_eq!(m.transpose(), n);
+    assert_eq!(n.transpose(), m);
+}
+
+#[test]
+fn test_transpose_commutation() {
+    let a = Matrix::new(5,3, |x,y| x+5*y);
+    let b = Matrix::new(4,5, |x,y| x+y + 2*(x+y)%2);
+
+    assert_eq!((&a * &b).transpose(), &b.transpose() * &a.transpose());
+}
+
+#[test]
+fn test_from_row() {
+    let v = Vector::new(4, |i| 1+i);
+    let m = Matrix::new(4,1, |x,_| 1+x);
+
+    assert_eq!(Matrix::from_row(&v), m);
+    assert_eq!(m.to_vector(), v);
+}
+
+#[test]
+fn test_sub() {
+    let a = Matrix::new(4,3, |x,y| x+y);
+    assert_eq!(&a - &a, Matrix::zero(4,3));
+}
+
+#[test]
+fn test_mul() {
+    let m = Matrix::new(4,4, |x,y| x+y);
+    let v = Vector::new(4, |i| i+1);
+
+    assert_eq!(Matrix::from_col(&(&m * &v)), &m * &Matrix::from_col(&v));
 }

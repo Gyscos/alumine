@@ -1,6 +1,7 @@
 use num::Zero;
-use std::ops::{Add,Sub,Mul,Div};
+use std::ops::{Add,Sub,Mul,Div,Index};
 
+#[derive(Clone,PartialEq,Debug)]
 pub struct Vector<T> {
     data: Vec<T>,
 }
@@ -13,6 +14,24 @@ impl <T> Vector<T> {
         Vector {
             data: data,
         }
+    }
+
+    pub fn from_vec(data: Vec<T>) -> Self {
+        Vector {
+            data: data,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
+impl <T> Index<usize> for Vector<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &T {
+        &self.data[index]
     }
 }
 
