@@ -1,4 +1,5 @@
 use num::Zero;
+use std::vec;
 use std::ops::{Add,Sub,Mul,Div,Index};
 
 #[derive(Clone,PartialEq,Debug)]
@@ -7,24 +8,61 @@ pub struct Vector<T> {
 }
 
 impl <T> Vector<T> {
+    /// Creates a new vector, filling the values with the given functor.
     pub fn new<F>(n: usize, f: F) -> Self
         where F: Fn(usize) -> T
     {
         let data = (0..n).map(|i| f(i)).collect();
-        Vector {
-            data: data,
-        }
+        Vector::from_vec(data)
     }
 
+    /// Returns a 0-dimensional empty vector.
+    pub fn dummy() -> Self {
+        Vector::from_vec(Vec::new())
+    }
+
+    /// Creates a vector directly from the given vec.
     pub fn from_vec(data: Vec<T>) -> Self {
         Vector {
             data: data,
         }
     }
 
-    pub fn len(&self) -> usize {
+    /// Return the dimension of the vector: the number of values.
+    pub fn dim(&self) -> usize {
         self.data.len()
     }
+
+    pub fn into_iter(self) -> vec::IntoIter<T> {
+        self.data.into_iter()
+    }
+}
+
+impl <T: Zero> Vector<T> {
+    /// Creates a zero vector of the given dimension.
+    pub fn zero(n: usize) -> Self {
+        Vector::new(n, |_| T::zero())
+    }
+}
+
+impl <T: Clone> Vector<T> {
+    /// Creates a vector with all values cloned from the given value.
+    pub fn from_copies(n: usize, model: T) -> Self {
+        Vector::new(n, |_| model.clone())
+    }
+}
+
+impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Vector<T> {
+    /// Returns the dot product between two vectors.
+    pub fn dot(&self, other: &Vector<T>) -> T {
+        self.data.iter().zip(other.data.iter()).map(|(a,b)| a.clone()*b.clone()).fold(T::zero(), |a,b| a+b)
+    }
+
+    /// Returns the squared norm of this vector.
+    pub fn norm_sq(&self) -> T {
+        self.dot(self)
+    }
+
 }
 
 impl <T> Index<usize> for Vector<T> {
@@ -35,17 +73,6 @@ impl <T> Index<usize> for Vector<T> {
     }
 }
 
-impl <T: Zero> Vector<T> {
-    pub fn zero(n: usize) -> Self {
-        Vector::new(n, |_| T::zero())
-    }
-}
-
-impl <T: Clone> Vector<T> {
-    pub fn from_copies(n: usize, model: T) -> Self {
-        Vector::new(n, |_| model.clone())
-    }
-}
 
 impl <'a,T: Clone + Add<Output=T>> Add for &'a Vector<T> {
     type Output = Vector<T>;
@@ -83,17 +110,6 @@ impl <'a, T: Mul<Output=T> + Clone> Mul<T> for &'a Vector<T> {
             data: data,
         }
     }
-}
-
-impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Vector<T> {
-    pub fn dot(&self, other: &Vector<T>) -> T {
-        self.data.iter().zip(other.data.iter()).map(|(a,b)| a.clone()*b.clone()).fold(T::zero(), |a,b| a+b)
-    }
-
-    pub fn norm_sq(&self) -> T {
-        self.dot(self)
-    }
-
 }
 
 impl <'a, T: Div<Output=T> + Clone> Div<T> for &'a Vector<T> {

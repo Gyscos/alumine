@@ -1,6 +1,6 @@
 use num::Zero;
 use std::fmt;
-use std::ops::{Index,Add,Mul,Div,Sub};
+use std::ops::{Index,IndexMut,Add,Mul,Div,Sub};
 
 use alg::Vector;
 
@@ -11,10 +11,16 @@ pub struct Matrix<T> {
     /// Number of columns (max X)
     pub n: usize,
 
+    // Inner data. Rows concatenated.
     data: Vec<T>,
 }
 
 impl <T> Matrix<T> {
+    /// Creates a new matrix with the given dimensions,
+    /// initializing each cell with the given functor.
+    ///
+    /// * `m` is the number of lines (the Y size)
+    /// * `n` is the number of columns (the X size)
     pub fn new<F>(n: usize, m: usize, f: F) -> Self
         where F: Fn(usize,usize) -> T
     {
@@ -28,6 +34,7 @@ impl <T> Matrix<T> {
 }
 
 impl <T: Zero> Matrix<T> {
+    /// Creates a new matrix initialized to zero.
     pub fn zero(n: usize, m: usize) -> Self {
         Matrix::new(n,m, |_,_| T::zero())
     }
@@ -35,24 +42,46 @@ impl <T: Zero> Matrix<T> {
 
 impl <T: Clone> Matrix<T> {
 
+    /// Create a single-column matrix from the given Vector.
     pub fn from_col(v: &Vector<T>) -> Self {
-        Matrix::new(1, v.len(), |_,y| v[y].clone())
+        Matrix::new(1, v.dim(), |_,y| v[y].clone())
     }
 
+    /// Create a single-row matrix from the given Vector.
     pub fn from_row(v: &Vector<T>) -> Self {
-        Matrix::new(v.len(), 1, |x,_| v[x].clone())
+        Matrix::new(v.dim(), 1, |x,_| v[x].clone())
     }
 
+    /// Returns the transposed matrix.
     pub fn transpose(&self) -> Matrix<T> {
         Matrix::new(self.m, self.n, |x,y| self[(y,x)].clone())
     }
 
-    pub fn to_vector(&self) -> Vector<T> {
+    /// If this matrix is single-row or single-column,
+    /// transforms this into a Vector.
+    pub fn to_vector(self) -> Vector<T> {
         if self.n == 1 || self.m == 1 {
-            Vector::from_vec(self.data.clone())
+            Vector::from_vec(self.data)
         } else {
             panic!("Matrix is not single-row or single-column.");
         }
+    }
+}
+
+impl <T: Clone + Zero> Matrix<T> {
+    /// Creates a new diagonal matrix, with the given vector serving as the diagonal.
+    pub fn diagonal(vector: Vector<T>) -> Self {
+        let n = vector.dim();
+        let mut m = Matrix::zero(n,n);
+        for (i,x) in vector.into_iter().enumerate() {
+            m[(i,i)] = x;
+        }
+        m
+    }
+
+    /// Creates a new scalar matrix with the given value.
+    pub fn scalar(n: usize, value: T) -> Self {
+        Matrix::diagonal(Vector::from_copies(n, value))
     }
 }
 
@@ -105,24 +134,19 @@ impl <'a, T: Div<Output=T> + Clone> Div<T> for &'a Matrix<T> {
     }
 }
 
-impl <T: Clone + Zero> Matrix<T> {
-    pub fn diagonal<F>(n: usize, f: F) -> Self
-        where F: Fn(usize) -> T
-    {
-        Matrix::new(n, n, |x,y| if x == y { f(x) } else { T::zero() })
-    }
-
-    pub fn identity(n: usize, value: T) -> Self {
-        Matrix::diagonal(n, |_| value.clone())
-    }
-}
-
 impl <T> Index<(usize,usize)> for Matrix<T> {
     type Output = T;
 
     fn index(&self, (x,y): (usize,usize)) -> &T {
         let i = x + y * self.n;
         &self.data[i]
+    }
+}
+
+impl <T> IndexMut<(usize,usize)> for Matrix<T> {
+    fn index_mut(&mut self, (x,y): (usize,usize)) -> &mut T {
+        let i = x + y * self.n;
+        &mut self.data[i]
     }
 }
 
@@ -143,7 +167,7 @@ impl <T: fmt::Display> fmt::Display for Matrix<T> {
 
 #[test]
 fn test_i3() {
-    let i3 = Matrix::identity(3, 1);
+    let i3 = Matrix::scalar(3, 1);
     assert_eq!(i3.n, 3);
     assert_eq!(i3.m, 3);
     assert_eq!(i3[(0,0)], 1);
@@ -153,9 +177,9 @@ fn test_i3() {
 
 #[test]
 fn test_add() {
-    let i3 = Matrix::identity(3, 1);
+    let i3 = Matrix::scalar(3, 1);
     let double = &i3 + &i3;
-    assert_eq!(double, Matrix::identity(3,2));
+    assert_eq!(double, Matrix::scalar(3,2));
 }
 
 #[test]
