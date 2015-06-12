@@ -5,6 +5,7 @@ use std::ops::{Index,IndexMut,Add,Mul,Div,Sub,Range};
 
 use alg::Vector;
 
+/// Represents a simple `NxM` matrix.
 #[derive(Clone,PartialEq,Debug)]
 pub struct Matrix<T> {
     /// Number of rows (max Y)

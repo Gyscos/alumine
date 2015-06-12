@@ -2,6 +2,7 @@ use num::Zero;
 use std::vec;
 use std::ops::{Add,Sub,Mul,Div,Index};
 
+/// Represents a `N`-dimensional vector.
 #[derive(Clone,PartialEq,Debug)]
 pub struct Vector<T> {
     data: Vec<T>,

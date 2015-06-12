@@ -1,3 +1,4 @@
+//! Linear algebra module
 mod vector;
 mod matrix;
 
