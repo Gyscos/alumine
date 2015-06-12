@@ -2,7 +2,7 @@ use num::Zero;
 use std::fmt;
 use std::ops::{Index,Add,Mul,Div,Sub};
 
-use vector::Vector;
+use alg::Vector;
 
 #[derive(Clone,PartialEq,Debug)]
 pub struct Matrix<T> {

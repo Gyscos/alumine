@@ -42,7 +42,7 @@ impl <T: Zero> Vector<T> {
 }
 
 impl <T: Clone> Vector<T> {
-    pub fn n_copies(n: usize, model: T) -> Self {
+    pub fn from_copies(n: usize, model: T) -> Self {
         Vector::new(n, |_| model.clone())
     }
 }
@@ -110,8 +110,8 @@ impl <'a, T: Div<Output=T> + Clone> Div<T> for &'a Vector<T> {
 
 #[test]
 fn test_dot() {
-    let a = Vector::n_copies(5, 1);
-    let b = Vector::n_copies(5, 2);
+    let a = Vector::from_copies(5, 1);
+    let b = Vector::from_copies(5, 2);
 
     let norm = a.dot(&b);
 

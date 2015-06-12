@@ -1,7 +1,4 @@
 extern crate num;
 
-mod vector;
-mod matrix;
-
-pub use vector::Vector;
-pub use matrix::Matrix;
+pub mod alg;
+pub mod ml;
