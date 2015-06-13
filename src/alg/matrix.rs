@@ -1,4 +1,5 @@
 use num::Zero;
+use num::Num;
 use std::fmt;
 use std::ops::{Index,IndexMut,Add,Mul,Div,Sub};
 
@@ -31,6 +32,19 @@ impl <T> Matrix<T> {
             data: data,
         }
     }
+
+    /// Creates a dummy empty matrix.
+    pub fn dummy() -> Self {
+        Matrix {
+            m: 0,
+            n: 0,
+            data: Vec::new(),
+        }
+    }
+
+    pub fn is_squared(&self) -> bool {
+        return self.m == self.n
+    }
 }
 
 impl <T: Zero> Matrix<T> {
@@ -47,9 +61,31 @@ impl <T: Clone> Matrix<T> {
         Matrix::new(1, v.dim(), |_,y| v[y].clone())
     }
 
+    /// Make a matrix from the given vectors, to treat as columns.
+    pub fn from_cols(cols: &[Vector<T>]) -> Self {
+        if cols.is_empty() {
+            Matrix::dummy()
+        } else {
+            let n = cols.len();
+            let m = cols.first().unwrap().dim();
+            Matrix::new(n, m, |x,y| cols[x][y].clone())
+        }
+    }
+
     /// Create a single-row matrix from the given Vector.
     pub fn from_row(v: &Vector<T>) -> Self {
         Matrix::new(v.dim(), 1, |x,_| v[x].clone())
+    }
+
+    /// Make a matrix from the given vectors, to treas as rows.
+    pub fn from_rows(rows: &[Vector<T>]) -> Self {
+        if rows.is_empty() {
+            Matrix::dummy()
+        } else {
+            let m = rows.len();
+            let n = rows.first().unwrap().dim();
+            Matrix::new(n, m, |x,y| rows[y][x].clone())
+        }
     }
 
     /// Returns the transposed matrix.
@@ -82,6 +118,20 @@ impl <T: Clone + Zero> Matrix<T> {
     /// Creates a new scalar matrix with the given value.
     pub fn scalar(n: usize, value: T) -> Self {
         Matrix::diagonal(Vector::from_copies(n, value))
+    }
+}
+
+impl <T: Clone + Num> Matrix<T> {
+    pub fn inverse(&self) -> Self {
+        self.clone().invert_inplace()
+    }
+
+    pub fn invert_inplace(mut self) -> Self {
+        if !self.is_squared() {
+            panic!("Attempting to invert a non-square matrix.");
+        }
+
+        self
     }
 }
 

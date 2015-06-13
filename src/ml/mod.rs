@@ -1,6 +1,10 @@
+//! Machine-learning module
+//!
+//! The main traits are the `Classifier` and the `Optimizer`. Various implementations are provided.
 mod classifier;
 mod optimizer;
 
+pub mod linear;
 pub mod bayes;
 pub mod cmaes;
 
