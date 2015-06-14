@@ -190,6 +190,20 @@ impl <T: Clone + Num> Matrix<T> {
         self.data.iter().map(|a| a.clone() * a.clone()).fold(T::zero(), |a,b| a+b)
     }
 
+    pub fn determinant(&self) -> T {
+        if self.m != self.n { return T::zero(); }
+
+        let mut sum = T::zero();
+
+        let range: Vec<usize> = (0..self.n).collect();
+
+        for sigma in range.permutations() {
+            sum = sum + sigma.into_iter().enumerate().map(|(i,j)| self[(i,j)].clone()).fold(T::one(), |a,b| a*b);
+        }
+
+        sum
+    }
+
     pub fn inverse(&self) -> Option<Self> {
         self.clone().invert_inplace()
     }
@@ -407,6 +421,12 @@ fn test_cols() {
     d.append_cols(a.clone());
     d.keep_cols(4..8);
     assert_eq!(a, d);
+}
+
+#[test]
+fn test_determinant() {
+    let i5 = Matrix::<f64>::identity(5);
+    assert_eq!(i5.determinant(), 1f64);
 }
 
 #[test]
