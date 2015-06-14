@@ -4,6 +4,7 @@
 mod classifier;
 mod optimizer;
 
+pub mod binary;
 pub mod linear;
 pub mod bayes;
 pub mod cmaes;

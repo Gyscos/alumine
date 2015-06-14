@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use num::Num;
 
 use ml::Classifier;
@@ -15,7 +17,7 @@ impl <T : Num> LinearRegression<T> {
     }
 }
 
-impl <T: Clone + Num> Classifier for LinearRegression<T> {
+impl <T: Clone + Num + Debug> Classifier for LinearRegression<T> {
     type Input = Vector<T>;
     type Label = T;
 
@@ -31,9 +33,15 @@ impl <T: Clone + Num> Classifier for LinearRegression<T> {
             Some(m) => m,
         };
         self.model = &(&inv_txx * &tx) * &labels;
+
+        println!("x: {:?}", x);
+        println!("tx: {:?}", tx);
+        println!("inv_ttx: {:?}", inv_txx);
+        println!("labels: {:?}", labels);
+        println!("model: {:?}", self.model);
     }
 
-    fn classify(&self, input:&Vector<T>) -> T {
+    fn classify(&self, input: &Vector<T>) -> T {
         self.model.dot(input)
     }
 }
