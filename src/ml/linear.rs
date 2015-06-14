@@ -26,7 +26,11 @@ impl <T: Clone + Num> Classifier for LinearRegression<T> {
 
         let tx = x.transpose();
 
-        self.model = &(&(&tx * &x).invert_inplace() * &tx) * &labels;
+        let inv_txx = match (&tx * &x).invert_inplace() {
+            None => return,
+            Some(m) => m,
+        };
+        self.model = &(&inv_txx * &tx) * &labels;
     }
 
     fn classify(&self, input:&Vector<T>) -> T {

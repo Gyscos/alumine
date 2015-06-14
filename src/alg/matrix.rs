@@ -1,7 +1,7 @@
-use num::Zero;
+use num::{Zero,One};
 use num::Num;
 use std::fmt;
-use std::ops::{Index,IndexMut,Add,Mul,Div,Sub};
+use std::ops::{Index,IndexMut,Add,Mul,Div,Sub,Range};
 
 use alg::Vector;
 
@@ -12,7 +12,7 @@ pub struct Matrix<T> {
     /// Number of columns (max X)
     pub n: usize,
 
-    // Inner data. Rows concatenated.
+    // Inner data. Cols concatenated.
     data: Vec<T>,
 }
 
@@ -25,12 +25,40 @@ impl <T> Matrix<T> {
     pub fn new<F>(n: usize, m: usize, f: F) -> Self
         where F: Fn(usize,usize) -> T
     {
-        let data = (0..n*m).map(|i| (i%n,i/n)).map(|(x,y)| f(x,y)).collect();
+        let data = (0..n*m).map(|i| (i/m,i%m)).map(|(x,y)| f(x,y)).collect();
         Matrix {
             m: m,
             n: n,
             data: data,
         }
+    }
+
+    pub fn keep_cols(&mut self, cols: Range<usize>) {
+        let n_cols = cols.end - cols.start;
+        let start = cols.start * self.m;
+        let end = cols.end * self.m;
+
+        self.data.truncate(end);
+
+        if start > 0 {
+            self.data = self.data.split_off(start);
+        }
+
+        self.n = n_cols;
+    }
+
+    pub fn append_cols(&mut self, mut other: Matrix<T>) {
+        if self.m != other.m {
+            panic!("Matrices don't have the same height.");
+        }
+
+        self.n += other.n;
+        // append is currently unstable. See ../lib.rs
+        self.data.append(&mut other.data);
+    }
+
+    fn get_index(&self, (x,y): (usize,usize)) -> usize {
+        y + x * self.m
     }
 
     /// Creates a dummy empty matrix.
@@ -44,6 +72,28 @@ impl <T> Matrix<T> {
 
     pub fn is_squared(&self) -> bool {
         return self.m == self.n
+    }
+
+    pub fn swap(&mut self, a: (usize,usize), b: (usize,usize)) {
+        let ia = self.get_index(a);
+        let ib = self.get_index(b);
+        self.data.swap(ia, ib);
+    }
+
+    pub fn swap_cols(&mut self, xa: usize, xb: usize) {
+        if xa == xb { return; }
+
+        for y in 0..self.n {
+            self.swap((xa,y), (xb,y));
+        }
+    }
+
+    pub fn swap_rows(&mut self, ya: usize, yb: usize) {
+        if ya == yb { return; }
+
+        for x in 0..self.n {
+            self.swap((x,ya),(x,yb));
+        }
     }
 }
 
@@ -59,6 +109,14 @@ impl <T: Clone> Matrix<T> {
     /// Create a single-column matrix from the given Vector.
     pub fn from_col(v: &Vector<T>) -> Self {
         Matrix::new(1, v.dim(), |_,y| v[y].clone())
+    }
+
+    pub fn row(&self, y: usize) -> Vector<T> {
+        Vector::new(self.n, |i| self[(i,y)].clone())
+    }
+
+    pub fn col(&self, x: usize) -> Vector<T> {
+        Vector::new(self.m, |i| self[(x,i)].clone())
     }
 
     /// Make a matrix from the given vectors, to treat as columns.
@@ -121,17 +179,70 @@ impl <T: Clone + Zero> Matrix<T> {
     }
 }
 
+impl <T: Clone + Zero + One> Matrix<T> {
+    pub fn identity(n: usize) -> Self {
+        Matrix::scalar(n, T::one())
+    }
+}
+
 impl <T: Clone + Num> Matrix<T> {
-    pub fn inverse(&self) -> Self {
+    pub fn norm(&self) -> T {
+        self.data.iter().map(|a| a.clone() * a.clone()).fold(T::zero(), |a,b| a+b)
+    }
+
+    pub fn inverse(&self) -> Option<Self> {
         self.clone().invert_inplace()
     }
 
-    pub fn invert_inplace(mut self) -> Self {
+    pub fn invert_inplace(mut self) -> Option<Self> {
         if !self.is_squared() {
             panic!("Attempting to invert a non-square matrix.");
         }
 
-        self
+        let n = self.n;
+
+        // Waaa matrix inversion is a complex business.
+        // Let's keep it `simple` with a Gauss-Jordan elimination...
+        // The idea is: append an Identity matrix to the right (so we have a 2x1 aspect ratio)
+        // Apply simple linear row operations (permutation, multiplication, addition) until the
+        // first half is an identity matrix.
+        // At this point, the second half should be the inverse matrix.
+        // (Since we apply the inverse of the first half to an identity matrix.)
+
+        self.append_cols(Matrix::scalar(n, T::one()));
+
+        // For each (original) column...
+        for k in 0..n {
+            // Make sure the column is C[i] = i==k ? 1 : 0
+
+            // Find the perfect candidate: a non-zero element
+            let j = match (k..n).find(|&i| self[(k,i)] != T::zero()) {
+                None => return None,
+                Some(j) => j,
+            };
+
+            self.swap_rows(j, k);
+
+            // Now divide the row by the diagonal value
+            let pivot = self[(k,k)].clone();
+            // No need to divide the first k values, they should be zeroes
+            for x in k..self.n {
+                self[(x,k)] = self[(x,k)].clone() / pivot.clone();
+            }
+
+            // Finally, zero all other rows
+            for y in (0..n).filter(|&i| i != k) {
+                let value = self[(k,y)].clone();
+                for x in k..self.n {
+                    self[(x,y)] = self[(x,y)].clone() - value.clone() * self[(x,k)].clone();
+                }
+            }
+        }
+
+        // And remove the first half
+        self.keep_cols(n..2*n);
+
+        Some(self)
     }
 }
 
@@ -157,6 +268,18 @@ impl <'a, T: Add<Output=T> + Clone> Add for &'a Matrix<T> {
 
     fn add(self, other: &'a Matrix<T>) -> Matrix<T> {
         Matrix::new(self.n, self.m, |x,y| self[(x,y)].clone() + other[(x,y)].clone())
+    }
+}
+
+impl <T: Sub<Output=T> + Clone> Sub for Matrix<T> {
+    type Output = Matrix<T>;
+
+    fn sub(mut self, other: Matrix<T>) -> Matrix<T> {
+        for (s,o) in self.data.iter_mut().zip(other.data.into_iter()) {
+            *s = s.clone() - o;
+        }
+
+        self
     }
 }
 
@@ -188,14 +311,14 @@ impl <T> Index<(usize,usize)> for Matrix<T> {
     type Output = T;
 
     fn index(&self, (x,y): (usize,usize)) -> &T {
-        let i = x + y * self.n;
+        let i = self.get_index((x,y));
         &self.data[i]
     }
 }
 
 impl <T> IndexMut<(usize,usize)> for Matrix<T> {
     fn index_mut(&mut self, (x,y): (usize,usize)) -> &mut T {
-        let i = x + y * self.n;
+        let i = self.get_index((x,y));
         &mut self.data[i]
     }
 }
@@ -268,6 +391,30 @@ fn test_from_row() {
 fn test_sub() {
     let a = Matrix::new(4,3, |x,y| x+y);
     assert_eq!(&a - &a, Matrix::zero(4,3));
+}
+
+#[test]
+fn test_cols() {
+    let a = Matrix::new(4,4, |x,y| x+y);
+    let b = Matrix::new(4,4, |x,y| 8 - (x+y));
+
+    let mut c = a.clone();
+    c.append_cols(b.clone());
+    c.keep_cols(4..8);
+    assert_eq!(b, c);
+
+    let mut d = b.clone();
+    d.append_cols(a.clone());
+    d.keep_cols(4..8);
+    assert_eq!(a, d);
+}
+
+#[test]
+fn test_inverse() {
+    let a = Matrix::new(2,2, |x,y| (x+y) as f64);
+    let b = a.inverse().unwrap();
+
+    assert_eq!((&a * &b), Matrix::identity(2));
 }
 
 #[test]
