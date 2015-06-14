@@ -155,7 +155,7 @@ impl <T: Clone> Matrix<T> {
     /// transforms this into a Vector.
     pub fn to_vector(self) -> Vector<T> {
         if self.n == 1 || self.m == 1 {
-            Vector::from_vec(self.data)
+            Vector::from(self.data)
         } else {
             panic!("Matrix is not single-row or single-column.");
         }

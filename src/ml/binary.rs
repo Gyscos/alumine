@@ -1,29 +1,33 @@
 use ml::Classifier;
 
-pub struct Binary<C: Classifier<Label=f64>>
+use num::Float;
+
+pub struct Binary<T:Float, C: Classifier<Label=T>>
 {
     inner: C,
+    threshold: T,
 }
 
-impl <C: Classifier<Label=f64>> Binary<C> {
-    pub fn wrap(classifier: C) -> Self {
+impl <T: Float, C: Classifier<Label=T>> Binary<T,C> {
+    pub fn wrap(threshold: T, classifier: C) -> Self {
         Binary {
             inner: classifier,
+            threshold: threshold,
         }
     }
 }
 
-impl <I,C: Classifier<Input=I,Label=f64>> Classifier for Binary<C> {
+impl <I, T: Float, C: Classifier<Input=I,Label=T>> Classifier for Binary<T,C> {
     type Input = I;
     type Label = bool;
 
     fn train(&mut self, samples: &[I], labels: &[bool]) {
-        let labels: Vec<f64> = labels.iter().map(|&b| if b { 1f64 } else { 0f64}).collect();
+        let labels: Vec<T> = labels.iter().map(|&b| if b { T::one() } else { T::zero() }).collect();
 
         self.inner.train(samples, &labels);
     }
 
     fn classify(&self, input: &I) -> bool {
-        self.inner.classify(input) > 0.5
+        self.inner.classify(input).clone() >= self.threshold.clone()
     }
 }

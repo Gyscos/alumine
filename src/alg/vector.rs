@@ -38,6 +38,19 @@ impl <T> Vector<T> {
     }
 }
 
+impl <T> From<Vec<T>> for Vector<T> {
+    // Creates a vector directly from the given vec.
+    fn from(data: Vec<T>) -> Self {
+        Vector::from_vec(data)
+    }
+}
+
+impl <'a,T: Clone> From<&'a [T]> for Vector<T> {
+    fn from(data: &'a [T]) -> Self {
+        Vector::from_slice(data)
+    }
+}
+
 impl <T: Zero> Vector<T> {
     /// Creates a zero vector of the given dimension.
     pub fn zero(n: usize) -> Self {
@@ -50,6 +63,11 @@ impl <T: Clone> Vector<T> {
     pub fn from_copies(n: usize, model: T) -> Self {
         Vector::new(n, |_| model.clone())
     }
+
+    pub fn from_slice(data: &[T]) -> Self {
+        Vector::from_vec(Vec::from(data))
+    }
+
 }
 
 impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Vector<T> {

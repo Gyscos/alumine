@@ -24,7 +24,7 @@ impl <T: Clone + Num + Debug> Classifier for LinearRegression<T> {
     fn train(&mut self, samples: &[Vector<T>], labels: &[T]) {
 
         let x = Matrix::from_rows(samples);
-        let labels = Vector::from_vec(Vec::from(labels));
+        let labels = Vector::from(Vec::from(labels));
 
         let tx = x.transpose();
 
@@ -33,12 +33,6 @@ impl <T: Clone + Num + Debug> Classifier for LinearRegression<T> {
             Some(m) => m,
         };
         self.model = &(&inv_txx * &tx) * &labels;
-
-        println!("x: {:?}", x);
-        println!("tx: {:?}", tx);
-        println!("inv_ttx: {:?}", inv_txx);
-        println!("labels: {:?}", labels);
-        println!("model: {:?}", self.model);
     }
 
     fn classify(&self, input: &Vector<T>) -> T {
