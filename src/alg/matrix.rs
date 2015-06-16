@@ -1,5 +1,5 @@
 use num::{Zero,One};
-use num::Num;
+use num::{Num,Float};
 use std::fmt;
 use std::ops::{Index,IndexMut,Add,Mul,Div,Sub,Range};
 
@@ -107,17 +107,29 @@ impl <T: Zero> Matrix<T> {
 
 impl <T: Clone> Matrix<T> {
 
-    /// Create a single-column matrix from the given Vector.
-    pub fn from_col(v: &Vector<T>) -> Self {
-        Matrix::new(1, v.dim(), |_,y| v[y].clone())
-    }
-
     pub fn row(&self, y: usize) -> Vector<T> {
         Vector::new(self.n, |i| self[(i,y)].clone())
     }
 
     pub fn col(&self, x: usize) -> Vector<T> {
         Vector::new(self.m, |i| self[(x,i)].clone())
+    }
+
+    pub fn set_col(&mut self, x: usize, col: Vector<T>) {
+        for (i,v) in col.into_iter().enumerate() {
+            self[(x,i)] = v;
+        }
+    }
+
+    pub fn set_row(&mut self, y: usize, row: Vector<T>) {
+        for (i,v) in row.into_iter().enumerate() {
+            self[(i,y)] = v;
+        }
+    }
+
+    /// Create a single-column matrix from the given Vector.
+    pub fn from_col(v: &Vector<T>) -> Self {
+        Matrix::new(1, v.dim(), |_,y| v[y].clone())
     }
 
     /// Make a matrix from the given vectors, to treat as columns.
@@ -206,10 +218,10 @@ impl <T: Clone + Num> Matrix<T> {
     }
 
     pub fn inverse(&self) -> Option<Self> {
-        self.clone().invert_inplace()
+        self.clone().invert_in_place()
     }
 
-    pub fn invert_inplace(mut self) -> Option<Self> {
+    pub fn invert_in_place(mut self) -> Option<Self> {
         if !self.is_squared() {
             panic!("Attempting to invert a non-square matrix.");
         }
@@ -259,21 +271,74 @@ impl <T: Clone + Num> Matrix<T> {
 
         Some(self)
     }
+
 }
 
-impl <'a, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul for &'a Matrix<T> {
+impl <T: Clone + Float> Matrix<T> {
+
+    pub fn cholesky(&self) -> Self {
+        self.clone().cholesky_in_place()
+    }
+
+    /// Returns a matrix `L` such that `L * L.transpose() == self`. Assumes that self is symmetric.
+    pub fn cholesky_in_place(mut self) -> Self {
+        let n = self.n;
+        for x in 0..n {
+            for y in 0..x { self[(x,y)] = T::zero(); }
+
+            let sum = (0..x).map(|i| self[(i,x)]).map(|v| v*v).fold(T::zero(), |a,b| a+b);
+            let ljj = (self[(x,x)] - sum).sqrt();
+            self[(x,x)] = ljj;
+            let iv = ljj.recip();
+
+            for y in x+1..n {
+                let sum = (0..x).map(|i| self[(i,x)] * self[(i,y)]).fold(T::zero(), |a,b| a+b);
+                let lij = (self[(x,y)] - sum) * iv;
+                self[(x,y)] = lij;
+            }
+        }
+
+        self
+    }
+}
+
+impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Mul for Matrix<T> {
     type Output = Matrix<T>;
 
-    fn mul(self, other: &'a Matrix<T>) -> Matrix<T> {
+    fn mul(self, other: Matrix<T>) -> Matrix<T> {
+        &self * &other
+    }
+}
+
+impl <'a,'b, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<&'b Matrix<T>> for &'a Matrix<T> {
+    type Output = Matrix<T>;
+
+    fn mul(self, other: &'b Matrix<T>) -> Matrix<T> {
         // TODO: might want to make this faster. Parallel? Skip zero values?
         Matrix::new(other.n, self.m, |x,y| (0..self.n).map(|i| self[(i,y)].clone() * other[(x,i)].clone()).fold(T::zero(), |a,b|a+b))
     }
 }
 
-impl <'a, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<&'a Vector<T>> for &'a Matrix<T> {
+impl <T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<Vector<T>> for Matrix<T> {
     type Output = Vector<T>;
 
-    fn mul(self, other: &'a Vector<T>) -> Vector<T> {
+    fn mul(self, other: Vector<T>) -> Vector<T> {
+        &self * &other
+    }
+}
+
+impl <'a, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<Vector<T>> for &'a Matrix<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: Vector<T>) -> Vector<T> {
+        self * &other
+    }
+}
+
+impl <'a,'b, T: Add<Output=T> + Mul<Output=T> + Zero + Clone> Mul<&'b Vector<T>> for &'a Matrix<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: &'b Vector<T>) -> Vector<T> {
         Vector::new(self.m, |i| (0..self.n).map(|j| self[(j,i)].clone() * other[j].clone()).fold(T::zero(), |a,b| a+b))
     }
 }

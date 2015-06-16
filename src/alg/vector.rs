@@ -2,6 +2,8 @@ use num::Zero;
 use std::vec;
 use std::ops::{Add,Sub,Mul,Div,Index};
 
+use alg::Matrix;
+
 /// Represents a `N`-dimensional vector.
 #[derive(Clone,PartialEq,Debug)]
 pub struct Vector<T> {
@@ -10,8 +12,8 @@ pub struct Vector<T> {
 
 impl <T> Vector<T> {
     /// Creates a new vector, filling the values with the given functor.
-    pub fn new<F>(n: usize, f: F) -> Self
-        where F: Fn(usize) -> T
+    pub fn new<F>(n: usize, mut f: F) -> Self
+        where F: FnMut(usize) -> T
     {
         let data = (0..n).map(|i| f(i)).collect();
         Vector::from_vec(data)
@@ -36,6 +38,10 @@ impl <T> Vector<T> {
 
     pub fn into_iter(self) -> vec::IntoIter<T> {
         self.data.into_iter()
+    }
+
+    pub fn data(&self) -> &[T] {
+        &self.data
     }
 }
 
@@ -82,6 +88,9 @@ impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Vector<T> {
         self.dot(self)
     }
 
+    pub fn outer_product(&self, other: &Vector<T>) -> Matrix<T> {
+        Matrix::from_col(self) * Matrix::from_row(other)
+    }
 }
 
 impl <T> Index<usize> for Vector<T> {
@@ -92,11 +101,35 @@ impl <T> Index<usize> for Vector<T> {
     }
 }
 
+impl <T: Clone + Add<Output=T>> Vector<T> {
+    pub fn add_in_place(&mut self, other: &Vector<T>) {
+        for (s,o) in self.data.iter_mut().zip(other.data.iter()) {
+            *s = s.clone() + o.clone();
+        }
+    }
+}
 
-impl <'a,T: Clone + Add<Output=T>> Add for &'a Vector<T> {
+impl <T: Clone + Add<Output=T>> Add for Vector<T> {
     type Output = Vector<T>;
 
-    fn add(self, other: &'a Vector<T>) -> Vector<T> {
+    fn add(mut self, other: Vector<T>) -> Vector<T> {
+        self.add_in_place(&other);
+        self
+    }
+}
+
+impl <'a,T: Clone + Add<Output=T>> Add<Vector<T>> for &'a Vector<T> {
+    type Output = Vector<T>;
+
+    fn add(self, other: Vector<T>) -> Vector<T> {
+        self + &other
+    }
+}
+
+impl <'a,'b,T: Clone + Add<Output=T>> Add<&'b Vector<T>> for &'a Vector<T> {
+    type Output = Vector<T>;
+
+    fn add(self, other: &'b Vector<T>) -> Vector<T> {
         let data = self.data.iter().zip(other.data.iter())
             .map(|(a,b)| a.clone()+b.clone()).collect();
 
@@ -128,6 +161,17 @@ impl <'a, T: Mul<Output=T> + Clone> Mul<T> for &'a Vector<T> {
         Vector {
             data: data,
         }
+    }
+}
+
+impl <T: Div<Output=T> + Clone> Div<T> for Vector<T> {
+    type Output = Vector<T>;
+
+    fn div(mut self, other: T) -> Vector<T> {
+        for s in self.data.iter_mut() {
+            *s = s.clone() / other.clone();
+        }
+        self
     }
 }
 
