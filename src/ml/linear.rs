@@ -10,9 +10,9 @@ pub struct LinearRegression<T> {
 }
 
 impl <T : Num> LinearRegression<T> {
-    pub fn new(n: usize) -> Self {
+    pub fn new() -> Self {
         LinearRegression {
-            model: Vector::zero(n),
+            model: Vector::dummy(),
         }
     }
 }
@@ -28,7 +28,7 @@ impl <T: Clone + Num + Debug> Classifier for LinearRegression<T> {
 
         let tx = x.transpose();
 
-        let inv_txx = match (&tx * &x).invert_inplace() {
+        let inv_txx = match (&tx * &x).invert_in_place() {
             None => return,
             Some(m) => m,
         };

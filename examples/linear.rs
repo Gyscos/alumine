@@ -32,7 +32,7 @@ fn read_data(filename: &str) -> (Vec<Vector<f64>>, Vec<f64>) {
 fn main() {
     let (samples, labels) = read_data("assets/linear.csv");
 
-    let mut classifier = LinearRegression::new(2);
+    let mut classifier = LinearRegression::new();
 
     classifier.train(&samples, &labels);
 

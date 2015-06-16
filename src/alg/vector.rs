@@ -152,6 +152,16 @@ impl <'a, T: Clone + Sub<Output=T>> Sub for &'a Vector<T> {
     }
 }
 
+impl <T: Mul<Output=T> + Clone> Mul<T> for Vector<T> {
+    type Output = Vector<T>;
+
+    fn mul(mut self, other: T) -> Vector<T> {
+        for v in self.data.iter_mut() {
+            *v = v.clone() * other.clone();
+        }
+        self
+    }
+}
 impl <'a, T: Mul<Output=T> + Clone> Mul<T> for &'a Vector<T> {
     type Output = Vector<T>;
 
