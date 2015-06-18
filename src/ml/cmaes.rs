@@ -54,6 +54,8 @@ struct CmaEsSlave<T: Float> {
     pop: usize,
     weights: Vec<T>,
 
+    sigma: T,
+
     // These vary
     population: Matrix<T>,
     covariance: Matrix<T>,
@@ -67,9 +69,10 @@ impl <T: Float> CmaEsSlave<T> {
             n: n,
             pop: pop,
             weights: Vec::new(),
+            sigma: T::one(),
 
             population: Matrix::zero(pop, n),
-            covariance: Matrix::zero(n,n),
+            covariance: Matrix::identity(n),
             mean: Vector::zero(n),
         }
     }
@@ -122,6 +125,7 @@ impl <T: Float> CmaEsSlave<T> {
         self.mean = mean;
 
         // Now, for the covariance...
+        
     }
 
     fn generate_population(&mut self) {
@@ -132,13 +136,13 @@ impl <T: Float> CmaEsSlave<T> {
         let d = Normal::new(0f64, 1f64);
 
         for i in 0..self.pop {
-            self.population.set_col(i, CmaEsSlave::generate_sample(&self.mean, &L, &mut r, &d));
+            self.population.set_col(i, CmaEsSlave::generate_sample(&self.mean, self.sigma, &L, &mut r, &d));
         }
     }
 
-    fn generate_sample<R: Rng, D: IndependentSample<f64>>(mean: &Vector<T>, L: &Matrix<T>, r: &mut R, d: &D) -> Vector<T> {
+    fn generate_sample<R: Rng, D: IndependentSample<f64>>(mean: &Vector<T>, sigma: T, L: &Matrix<T>, r: &mut R, d: &D) -> Vector<T> {
         // Multivariate sampling from covariance matrix
         let normal = Vector::new(mean.dim(), |_| T::from(d.ind_sample(r)).unwrap());
-        mean + L * normal
+        mean + (L * normal) * sigma
     }
 }
