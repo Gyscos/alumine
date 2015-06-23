@@ -11,7 +11,7 @@ use alumine::ml::linear::LinearRegression;
 
 fn read_data(filename: &str) -> (Vec<Vector<f64>>, Vec<f64>) {
     let file = File::open(filename).unwrap();
-    let mut reader = BufReader::new(file);
+    let reader = BufReader::new(file);
 
     let mut samples = Vec::new();
     let mut labels = Vec::new();

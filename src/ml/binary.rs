@@ -5,14 +5,12 @@ use num::Float;
 pub struct Binary<T:Float, C: Classifier<Label=T>>
 {
     inner: C,
-    threshold: T,
 }
 
 impl <T: Float, C: Classifier<Label=T>> Binary<T,C> {
     pub fn wrap(threshold: T, classifier: C) -> Self {
         Binary {
             inner: classifier,
-            threshold: threshold,
         }
     }
 }
@@ -28,6 +26,7 @@ impl <I, T: Float, C: Classifier<Input=I,Label=T>> Classifier for Binary<T,C> {
     }
 
     fn classify(&self, input: &I) -> bool {
-        self.inner.classify(input).clone() >= self.threshold.clone()
+        let threshold = T::one() / (T::one() + T::one());
+        self.inner.classify(input).clone() >= threshold
     }
 }
