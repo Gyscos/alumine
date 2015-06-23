@@ -1,5 +1,5 @@
 // Needed for `Vec::append` in alg/matrix.rs
-#![feature(collections)]
+#![feature(append,split_off,permutations)]
 
 extern crate num;
 extern crate rand;
