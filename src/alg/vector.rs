@@ -36,13 +36,16 @@ impl <T> Vector<T> {
         self.data.len()
     }
 
+    /// Returns an IntoIterator on the values.
     pub fn into_iter(self) -> vec::IntoIter<T> {
         self.data.into_iter()
     }
 
+    /// Returns a read-only view onto the inner data.
     pub fn data(&self) -> &[T] {
         &self.data
     }
+
 }
 
 impl <T> From<Vec<T>> for Vector<T> {
@@ -71,10 +74,28 @@ impl <T: Clone> Vector<T> {
         Vector::new(n, |_| model.clone())
     }
 
+    /// Clone data from a slice.
     pub fn from_slice(data: &[T]) -> Self {
         Vector::from_vec(Vec::from(data))
     }
 
+    /// Map in place the current values through the given function.
+    pub fn apply<F>(&mut self, f: F)
+        where F: Fn(T) -> T
+    {
+        // Could be done in parallel?
+        for x in self.data.iter_mut() {
+            *x = f(x.clone());
+        }
+    }
+
+    /// Convenient method to call apply in a chain.
+    pub fn chain_apply<F>(mut self, f: F) -> Self
+        where F: Fn(T) -> T
+    {
+        self.apply(f);
+        self
+    }
 }
 
 impl <T: Clone + Mul<Output=T> + Add<Output=T> + Zero> Vector<T> {
@@ -156,12 +177,10 @@ impl <T: Mul<Output=T> + Clone> Mul<T> for Vector<T> {
     type Output = Vector<T>;
 
     fn mul(mut self, other: T) -> Vector<T> {
-        for v in self.data.iter_mut() {
-            *v = v.clone() * other.clone();
-        }
-        self
+        self.chain_apply(|v| v * other.clone())
     }
 }
+
 impl <'a, T: Mul<Output=T> + Clone> Mul<T> for &'a Vector<T> {
     type Output = Vector<T>;
 
@@ -178,10 +197,7 @@ impl <T: Div<Output=T> + Clone> Div<T> for Vector<T> {
     type Output = Vector<T>;
 
     fn div(mut self, other: T) -> Vector<T> {
-        for s in self.data.iter_mut() {
-            *s = s.clone() / other.clone();
-        }
-        self
+        self.chain_apply(|v| v / other.clone())
     }
 }
 

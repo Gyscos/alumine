@@ -8,7 +8,7 @@ pub struct Binary<T:Float, C: Classifier<Label=T>>
 }
 
 impl <T: Float, C: Classifier<Label=T>> Binary<T,C> {
-    pub fn wrap(threshold: T, classifier: C) -> Self {
+    pub fn wrap(classifier: C) -> Self {
         Binary {
             inner: classifier,
         }

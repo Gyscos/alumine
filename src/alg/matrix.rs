@@ -34,6 +34,8 @@ impl <T> Matrix<T> {
         }
     }
 
+    /// Only keeps a subset of consecutive columns indicated
+    /// by the given range, and discard the rest.
     pub fn keep_cols(&mut self, cols: Range<usize>) {
         let n_cols = cols.end - cols.start;
         let start = cols.start * self.m;
@@ -48,6 +50,9 @@ impl <T> Matrix<T> {
         self.n = n_cols;
     }
 
+    /// Appends the columnds from the given matrix to this one.
+    ///
+    /// Panics if the matrices don't have the same height.
     pub fn append_cols(&mut self, mut other: Matrix<T>) {
         if self.m != other.m {
             panic!("Matrices don't have the same height.");
@@ -58,6 +63,7 @@ impl <T> Matrix<T> {
         self.data.append(&mut other.data);
     }
 
+    /// Returns the index in the data array corresponding to the given cell.
     fn get_index(&self, (x,y): (usize,usize)) -> usize {
         y + x * self.m
     }
@@ -71,16 +77,19 @@ impl <T> Matrix<T> {
         }
     }
 
-    pub fn is_squared(&self) -> bool {
+    /// Returns TRUE if the matrix is square.
+    pub fn is_square(&self) -> bool {
         return self.m == self.n
     }
 
+    /// Swaps the content from two cells.
     pub fn swap(&mut self, a: (usize,usize), b: (usize,usize)) {
         let ia = self.get_index(a);
         let ib = self.get_index(b);
         self.data.swap(ia, ib);
     }
 
+    /// Swaps the content from two columns.
     pub fn swap_cols(&mut self, xa: usize, xb: usize) {
         if xa == xb { return; }
 
@@ -89,6 +98,7 @@ impl <T> Matrix<T> {
         }
     }
 
+    /// Swaps the content from two rows.
     pub fn swap_rows(&mut self, ya: usize, yb: usize) {
         if ya == yb { return; }
 
@@ -107,20 +117,24 @@ impl <T: Zero> Matrix<T> {
 
 impl <T: Clone> Matrix<T> {
 
+    /// Returns a new Vector, cloned from the given row.
     pub fn row(&self, y: usize) -> Vector<T> {
         Vector::new(self.n, |i| self[(i,y)].clone())
     }
 
+    /// Returns a new Vector, cloned from the given column.
     pub fn col(&self, x: usize) -> Vector<T> {
         Vector::new(self.m, |i| self[(x,i)].clone())
     }
 
+    /// Sets a column content from the given vector.
     pub fn set_col(&mut self, x: usize, col: Vector<T>) {
         for (i,v) in col.into_iter().enumerate() {
             self[(x,i)] = v;
         }
     }
 
+    /// Sets a row content from the given vector.
     pub fn set_row(&mut self, y: usize, row: Vector<T>) {
         for (i,v) in row.into_iter().enumerate() {
             self[(i,y)] = v;
@@ -193,16 +207,21 @@ impl <T: Clone + Zero> Matrix<T> {
 }
 
 impl <T: Clone + Zero + One> Matrix<T> {
+    /// Creates a new square identity matrix, with ones on the diagonal.
     pub fn identity(n: usize) -> Self {
         Matrix::scalar(n, T::one())
     }
 }
 
 impl <T: Clone + Num> Matrix<T> {
-    pub fn norm(&self) -> T {
+    /// Returns the square norm of a matrix: the sum of the square of all cells.
+    pub fn square_norm(&self) -> T {
         self.data.iter().map(|a| a.clone() * a.clone()).fold(T::zero(), |a,b| a+b)
     }
 
+    /// Returns the matrix determinant.
+    ///
+    /// Returns zero for non-square and non-invertible matrices.
     pub fn determinant(&self) -> T {
         if self.m != self.n { return T::zero(); }
 
@@ -211,18 +230,22 @@ impl <T: Clone + Num> Matrix<T> {
         let range: Vec<usize> = (0..self.n).collect();
 
         for sigma in range.permutations() {
+            // TODO: actually compute the signature!!
+            // We must multiply by +1 or -1 depending on thepermutation.
             sum = sum + sigma.into_iter().enumerate().map(|(i,j)| self[(i,j)].clone()).fold(T::one(), |a,b| a*b);
         }
 
         sum
     }
 
+    /// Returns the inverse of the given matrix, if it is invertible.
     pub fn inverse(&self) -> Option<Self> {
         self.clone().invert_in_place()
     }
 
+    /// Consumes the given matrix, and returns its inverse, if it is invertible.
     pub fn invert_in_place(mut self) -> Option<Self> {
-        if !self.is_squared() {
+        if !self.is_square() {
             panic!("Attempting to invert a non-square matrix.");
         }
 
@@ -276,6 +299,7 @@ impl <T: Clone + Num> Matrix<T> {
 
 impl <T: Clone + Float> Matrix<T> {
 
+    /// Returns the triangular matrix from the cholesky decomposition.
     pub fn cholesky(&self) -> Self {
         self.clone().cholesky_in_place()
     }
